@@ -22,6 +22,10 @@ paper/figures/*.png
 sources/*.pdf
 sources/*.PDF
 
+# Downloaded datasets stay local: record the URL and checksum in the result
+# file instead. Many dataset licences forbid redistribution.
+experiments/data/
+
 # Tool cache
 .cache/
 
