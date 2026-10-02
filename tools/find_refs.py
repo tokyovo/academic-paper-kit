@@ -103,8 +103,34 @@ def from_crossref(doi: str) -> str | None:
     return fmt(entry_type, make_key(authors, year, title), fields)
 
 
+def from_datacite(arxiv_id: str) -> str | None:
+    """Build the entry from arXiv's DataCite DOI record (see check_refs)."""
+    status, body = get("https://api.datacite.org/dois/"
+                       + urllib.parse.quote(f"10.48550/arXiv.{arxiv_id}", safe=""))
+    if status != 200:
+        return None
+    a = json.loads(body).get("data", {}).get("attributes", {})
+    authors = [f"{c['familyName']}, {c.get('givenName', '')}".strip(", ")
+               if c.get("familyName") else c.get("name", "")
+               for c in a.get("creators") or []]
+    title = clean_text((a.get("titles") or [{}])[0].get("title", ""))
+    year = str(a.get("publicationYear") or "")
+    return fmt("article", make_key(authors, year, title), {
+        "title": title,
+        "author": " and ".join(authors),
+        "journal": "arXiv preprint",
+        "year": year,
+        "eprint": arxiv_id,
+        "archiveprefix": "arXiv",
+    })
+
+
 def from_arxiv(arxiv_id: str) -> str | None:
-    arxiv_id = re.sub(r"^arxiv:", "", arxiv_id, flags=re.I)
+    arxiv_id = re.sub(r"v\d+$", "", re.sub(r"^arxiv:", "", arxiv_id, flags=re.I))
+    # DataCite first: the arXiv API often answers 429 or times out.
+    entry = from_datacite(arxiv_id)
+    if entry:
+        return entry
     status, body = get("http://export.arxiv.org/api/query?max_results=1&id_list="
                        + urllib.parse.quote(arxiv_id))
     ns = {"a": "http://www.w3.org/2005/Atom"}

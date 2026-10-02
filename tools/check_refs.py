@@ -298,9 +298,33 @@ def search_crossref(text: str, rows: int = 5) -> list[dict]:
     return json.loads(body).get("message", {}).get("items") or []
 
 
+def lookup_datacite(arxiv_id: str):
+    """arXiv registers a DOI for every paper (10.48550/arXiv.<id>) with
+    DataCite. DataCite serves the same title, authors and year, and it does
+    not rate-limit the way the arXiv API does."""
+    status, body = get("https://api.datacite.org/dois/"
+                       + urllib.parse.quote(f"10.48550/arXiv.{arxiv_id}", safe=""))
+    if status != 200:
+        return None, None, "datacite", f"HTTP {status}"
+    attrs = json.loads(body).get("data", {}).get("attributes", {})
+    year = str(attrs.get("publicationYear", ""))
+    return True, [{"title": clean_text((attrs.get("titles") or [{}])[0].get("title", "")),
+                   "authors": [c.get("familyName") or c.get("name") or ""
+                               for c in attrs.get("creators") or []],
+                   "year": int(year) if year.isdigit() else None}], "datacite", ""
+
+
 def lookup_arxiv(eprint: str):
     arxiv_id = re.sub(r"^arxiv:", "", eprint.strip(), flags=re.I)
     arxiv_id = re.sub(r"v\d+$", "", arxiv_id)
+    # DataCite first: the arXiv API often answers 429 or times out. A DOI
+    # can be missing for a few days after a paper appears, so fall back.
+    try:
+        found = lookup_datacite(arxiv_id)
+        if found[0]:
+            return found
+    except RuntimeError:
+        pass
     url = ("http://export.arxiv.org/api/query?id_list="
            + urllib.parse.quote(arxiv_id) + "&max_results=1")
     status, body = get(url)
