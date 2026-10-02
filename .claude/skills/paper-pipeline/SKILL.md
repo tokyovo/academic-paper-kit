@@ -35,7 +35,7 @@ file, and stop at each human gate. The full rationale is in
 | 8 | Draft | `paper-writer`, one per section group | yes | `make check-evidence`, `scrub --draft`, `make ledger` |
 | 9 | Merge | lead | no | `make paper` (0 undefined), cross-writer `\todo`s resolved |
 | 10 | Audit | `paper-auditor` | no | advisory: `notes/audit.md` |
-| 10b | Integration pass: read the whole paper, fix the audit findings and the joins | lead (one agent) | no | `make check-evidence`, `make ledger`, `scrub --draft` |
+| 10b | Integration pass: fix the audit findings and the joins; audit the changed lines again; repeat, at most 3 rounds | lead (one agent) + `paper-auditor` | no | no OVERSTATED or UNSUPPORTED left; `make check-evidence`, `make ledger`, `scrub --draft` |
 | 11 | Human parts | human | no | gate H4: title, abstract, contributions, conclusion |
 | 12 | Submit | lead + `pre-submission` skill | no | gate H5: `make check` clean |
 
@@ -82,6 +82,12 @@ paper and fixes: OVERSTATED and UNSUPPORTED sentences; wording that does
 not fit the numbers; contradictions between sections; different names for
 the same method or metric. Update the ledger rows of every sentence you
 change. Run the stage checks again.
+
+Your own fixes can overstate too. Before you change a cited sentence, read
+the full PDF page (`pdftotext -f N -l N`), not only the quote. After the
+fixes, spawn `paper-auditor` again on the changed lines only. Repeat until
+it reports no OVERSTATED or UNSUPPORTED sentence, at most 3 rounds; then
+list what is left for the human.
 
 **12. Submit.** `make check` must pass with no `--draft`. Then use the
 `pre-submission` skill for the venue's disclosure.

@@ -87,6 +87,13 @@ These came from running the workflow end to end, and each one changed the kit.
   and one contradiction between the two writers (label balance). Each
   half was clean; the problems were where they meet. So the pipeline now
   has an integration pass by one agent after the audit.
+- **The lead's own fix overstated a claim.** In the first integration pass,
+  the lead added "on claims" to a sentence from a short quote; the second
+  audit showed the source's figure also covers whole articles. So the
+  integration pass is a loop: fix, audit the changed lines again, at most
+  3 rounds, reading the full page before each fix. In the trial, round 1
+  fixed 3 of the top 5 problems and round 2 fixed the rest that an agent
+  may fix.
 - **Comparison claims need both runs as evidence.** A ledger row may list
   several paths: `a.json; b.json`. `make ledger` checks each.
 - **Parallel writers need a lead to merge.** The results writer could not
