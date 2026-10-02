@@ -220,6 +220,16 @@ def clean_doi(raw: str) -> str:
     return doi.strip().rstrip(".")
 
 
+def arxiv_id_from_doi(doi: str) -> str | None:
+    """Return the arXiv ID in an arXiv DOI (10.48550/arXiv.<id>), else None.
+
+    arXiv DOIs are registered with DataCite, not Crossref, so Crossref answers
+    404 for them. The arXiv API has the same record.
+    """
+    m = re.match(r"^10\.48550/arxiv\.(.+)$", doi, re.I)
+    return m.group(1) if m else None
+
+
 def lookup_doi(doi: str):
     url = "https://api.crossref.org/works/" + urllib.parse.quote(doi, safe="")
     status, body = get(url)
@@ -311,11 +321,13 @@ def check_entry(entry: dict) -> dict:
         result["detail"] = "entry has no title field"
         return result
 
-    doi = fields.get("doi")
+    doi = clean_doi(fields.get("doi", ""))
     eprint = fields.get("eprint") or fields.get("arxivid")
+    if arxiv_id_from_doi(doi):
+        doi, eprint = "", arxiv_id_from_doi(doi)
     try:
         if doi:
-            found, records, source, note = lookup_doi(clean_doi(doi))
+            found, records, source, note = lookup_doi(doi)
         elif eprint:
             found, records, source, note = lookup_arxiv(eprint)
         else:

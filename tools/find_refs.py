@@ -26,7 +26,7 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from check_refs import clean_doi, get, normalize_title  # noqa: E402
+from check_refs import arxiv_id_from_doi, clean_doi, get, normalize_title  # noqa: E402
 
 BIB_PATH = "paper/refs.bib"
 
@@ -128,6 +128,11 @@ def from_arxiv(arxiv_id: str) -> str | None:
     return fmt("article", make_key(authors, year, title), fields)
 
 
+def from_doi(doi: str) -> str | None:
+    arxiv_id = arxiv_id_from_doi(doi)
+    return from_arxiv(arxiv_id) if arxiv_id else from_crossref(doi)
+
+
 def search_openalex(title: str) -> list[dict]:
     url = ("https://api.openalex.org/works?per-page=3"
            "&select=title,doi,publication_year,authorships,type,primary_location"
@@ -148,7 +153,7 @@ def main() -> int:
     query = " ".join(args)
 
     if re.match(r"^(https?://(dx\.)?doi\.org/|doi:)?10\.\d{4,9}/", query, re.I):
-        entry = from_crossref(clean_doi(query))
+        entry = from_doi(clean_doi(query))
     elif re.match(r"^(arxiv:)?\d{4}\.\d{4,5}(v\d+)?$", query, re.I):
         entry = from_arxiv(query)
     else:
@@ -169,7 +174,7 @@ def main() -> int:
         if not doi:
             print("The only candidate has no DOI. Import it through Zotero instead.")
             return 1
-        entry = from_crossref(doi)
+        entry = from_doi(doi)
 
     if not entry:
         return 1

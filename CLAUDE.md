@@ -124,8 +124,8 @@ No dependencies: the tools use the Python standard library only.
 - `paper/tables/` and `paper/figures/` are generated and git-ignored.
   Run `make tables figures` before `make paper`.
 - A result file holds `run_id`, `commit`, `seed`, `dataset` and `metrics{}`.
-- `find_refs.py` imports `get`, `clean_doi` and `normalize_title` from
-  `check_refs.py`. After a change to one, test both.
+- `find_refs.py` imports `get`, `clean_doi`, `normalize_title` and
+  `arxiv_id_from_doi` from `check_refs.py`. After a change to one, test both.
 - `scrub.py` skips any line that contains `scrub:ignore` and every macro
   definition. The `\todo` macro in `paper/main.tex` depends on this.
 - The gates differ:
