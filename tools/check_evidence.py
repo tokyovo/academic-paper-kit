@@ -29,6 +29,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from check_extractions import MIN_QUOTE, page_text, squash  # noqa: E402
+from scrub import strip_comments  # noqa: E402
 
 CITE = re.compile(r"\\cite[a-zA-Z]*\s*(?:\[[^\]]*\])*\{([^}]*)\}")
 EVIDENCE = re.compile(r'^\s*%\s*sources/([^/\s]+)\.pdf\s+p\.?\s*(\d+)\s*:\s*"(.*)"\s*$')
@@ -39,7 +40,8 @@ def check_file(path: str, sources: str, cache: dict) -> tuple[int, list[str]]:
         lines = fh.read().splitlines()
     problems, n_cited = [], 0
     for i, line in enumerate(lines):
-        code = line.split("%", 1)[0] if not line.lstrip().startswith("%") else ""
+        # strip_comments keeps an escaped \% (as in "4.3\% better").
+        code = strip_comments(line)
         keys = {k.strip() for m in CITE.finditer(code) for k in m.group(1).split(",")
                 if k.strip()}
         if not keys:
