@@ -4,7 +4,9 @@
 PAPER_DIR := paper
 MAIN      := main
 BIB       := $(PAPER_DIR)/refs.bib
-PYTHON    := python3
+# A project venv (.venv) is used when it exists: experiments and figures
+# often need packages, such as matplotlib, that the system Python lacks.
+PYTHON    := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
 .PHONY: help paper figures tables check check-refs check-refs-fresh scrub \
         find-refs ledger pdfs check-extractions check-results check-evidence clean distclean test

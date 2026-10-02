@@ -118,8 +118,15 @@ No dependencies: the tools use the Python standard library only.
     experiments/results/*.json ──> analysis/make_tables.py  ──> paper/tables/*.tex
                                └─> analysis/make_figures.py ──> paper/figures/
     make find-refs (tools/find_refs.py) ──> paper/refs.bib ──> make check-refs
+    paper/refs.bib ──> make pdfs ──> sources/<key>.pdf
+    sources/<key>.pdf ──> notes/extractions/<key>.md ──> make check-extractions
+    notes/extractions ──> paper/sections/*.tex ──> make check-evidence
     paper/**/*.tex ──> make scrub (every \cite key must be in refs.bib)
-    notes/claim_ledger.md ──> make ledger (evidence paths must exist)
+    notes/claim_ledger.md + notes/claims/*.md ──> make ledger
+
+- The `paper-pipeline` skill runs these stages with parallel agents
+  (`.claude/agents/`). Read `docs/agent-workflow.md` before changing it.
+  Parallel agents must own disjoint files; only the lead writes shared ones.
 
 - `paper/tables/` and `paper/figures/` are generated and git-ignored.
   Run `make tables figures` before `make paper`.

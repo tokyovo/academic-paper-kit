@@ -32,16 +32,23 @@ memory. Every entry in `paper/refs.bib` must come from a real lookup, and
 ```
 CLAUDE.md               the rules the agent must follow (AGENTS.md and
                         GEMINI.md are symlinks to it)
-.claude/skills/         six skills: find-literature, related-work,
+.claude/skills/         seven skills: paper-pipeline (the whole paper with
+                        parallel agents), find-literature, related-work,
                         draft-section, claim-audit, reviewer-response,
                         pre-submission
+.claude/agents/         paper-reader, paper-writer, paper-auditor: the agents
+                        paper-pipeline runs in parallel
 paper/                  main.tex, sections/, refs.bib, generated tables and figures
 sources/                the PDFs you cite; an agent may only draft from these
 experiments/            configs, code, and result JSON with seed and commit hash
 analysis/               make_tables.py and make_figures.py: results -> paper
-notes/claim_ledger.md   claim -> evidence file -> section
-tools/                  check_refs.py, find_refs.py, scrub.py, check_ledger.py
-docs/                   workflow.md (the loop), venues.md (disclosure rules
+notes/                  claim_ledger.md and claims/ (claim -> evidence ->
+                        section), extractions/ (quoted notes per PDF)
+tools/                  find_refs.py, check_refs.py, fetch_pdfs.py, scrub.py,
+                        check_extractions.py, check_evidence.py,
+                        check_results.py, check_ledger.py
+docs/                   workflow.md (the loop), agent-workflow.md (the
+                        parallel-agent design), venues.md (disclosure rules
                         per venue), tools.md (other open-source tools),
                         field-review.md (the research notes behind the rules)
 ai_use_log.md           what you disclose at submission
@@ -70,7 +77,11 @@ make find-refs Q=10.1145/3442188.3445922   # add a real reference by DOI
 make find-refs Q="attention is all you need"   # or by title
 make check-refs      # verify every entry against Crossref, arXiv, OpenAlex
 make scrub           # leftover AI text, placeholders, unknown cite keys
-make tables          # results JSON -> LaTeX tables
+make pdfs            # download open-access PDFs into sources/
+make check-extractions   # every quote in notes/extractions/ is in its PDF
+make check-evidence  # every cited sentence has a quote that is in its PDF
+make tables          # results JSON -> LaTeX tables and result macros
+make check-results   # every result names a real commit, seed, data, environment
 make ledger          # claims with no evidence file
 make check           # the whole gate, before you submit
 make test            # prove the checkers work on deliberately bad fixtures
@@ -114,6 +125,9 @@ supervised.
 ## Where to read more
 
 - `docs/workflow.md` — the stage-by-stage loop, and who checks what.
+
+- `docs/agent-workflow.md` — the same loop with parallel agents: who owns
+  which file, what each check proves, and the lessons from a trial paper.
 
 - `docs/venues.md` — what each publisher and conference requires.
 
