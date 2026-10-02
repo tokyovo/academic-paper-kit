@@ -41,7 +41,9 @@ experiments/            configs, code, and result JSON with seed and commit hash
 analysis/               make_tables.py and make_figures.py: results -> paper
 notes/claim_ledger.md   claim -> evidence file -> section
 tools/                  check_refs.py, find_refs.py, scrub.py, check_ledger.py
-docs/                   workflow.md and venues.md (disclosure rules per venue)
+docs/                   workflow.md (the loop), venues.md (disclosure rules
+                        per venue), tools.md (other open-source tools),
+                        field-review.md (the research notes behind the rules)
 ai_use_log.md           what you disclose at submission
 Makefile                make check is the pre-submission gate
 ```
@@ -108,5 +110,15 @@ It is not an autonomous paper generator. Those exist, and at Agents4Science
 acceptances. Supervised beats autonomous, and this repo is built for
 supervised.
 
-See `docs/workflow.md` for the stage-by-stage loop and `docs/venues.md` for
-what each publisher requires.
+## Where to read more
+
+- `docs/workflow.md` — the stage-by-stage loop, and who checks what.
+
+- `docs/venues.md` — what each publisher and conference requires.
+
+- `docs/tools.md` — the other open-source tools: Zotero MCP, PaperQA2, STORM,
+  the reference checkers, the agent skill bundles, the autonomous systems.
+
+- `docs/field-review.md` — the October 2026 research notes the rules come
+  from: the five hallucination studies, the enforcement record, how good
+  autonomous systems actually are, and the caveats.

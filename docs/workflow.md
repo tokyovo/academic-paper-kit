@@ -35,6 +35,9 @@ Then:
 | Reviews | Decide tone and concessions | `reviewer-response` skill | `latexdiff` |
 | Submit | Approve the disclosure | `pre-submission` skill | `make check` |
 
+Background reading: `docs/field-review.md` for the evidence, `docs/tools.md`
+for what else is out there.
+
 ## Why these rules
 
 Hallucinated citations are now the main way papers get desk-rejected. In
