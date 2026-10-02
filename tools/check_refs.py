@@ -25,6 +25,7 @@ error), so it can gate a Makefile or CI job.
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import re
@@ -46,6 +47,10 @@ USER_AGENT = "academic-paper-kit/1.0 (reference verification; +https://github.co
 CACHE_PATH = ".cache/refs.json"
 TIMEOUT = 20
 PAUSE = 0.34  # be polite to the public APIs
+# Seconds to wait before each retry of a rate-limited or timed-out call.
+RETRY_WAITS = (3, 10, 30)
+RETRY_STATUS = {429, 500, 502, 503, 504}
+MAX_WAIT = 60
 
 
 # --------------------------------------------------------------------------
@@ -199,14 +204,28 @@ def authors_and_year_problems(fields: dict, db: dict) -> list[str]:
 # --------------------------------------------------------------------------
 
 def get(url: str) -> tuple[int, bytes]:
+    """GET a URL. Retry a rate limit (429), a server error (5xx) or a timeout.
+
+    arXiv in particular answers 429 when calls come faster than one per three
+    seconds. Other failures, such as a refused connection, fail at once.
+    """
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            return resp.status, resp.read()
-    except urllib.error.HTTPError as exc:
-        return exc.code, b""
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise RuntimeError(f"network error: {exc}") from exc
+    for wait in RETRY_WAITS + (None,):
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+                return resp.status, resp.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code not in RETRY_STATUS or wait is None:
+                return exc.code, b""
+            after = exc.headers.get("Retry-After", "")
+            if after.isdigit():
+                wait = min(int(after), MAX_WAIT)
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            timed_out = isinstance(exc, TimeoutError) or isinstance(
+                getattr(exc, "reason", None), TimeoutError)
+            if not timed_out or wait is None:
+                raise RuntimeError(f"network error: {exc}") from exc
+        time.sleep(wait)
 
 
 # --------------------------------------------------------------------------
@@ -237,13 +256,46 @@ def lookup_doi(doi: str):
         return False, None, "crossref", "DOI does not exist"
     if status != 200:
         return None, None, "crossref", f"HTTP {status}"
-    msg = json.loads(body).get("message", {})
-    titles = msg.get("title") or []
+    return True, [crossref_record(json.loads(body).get("message", {}))], "crossref", ""
+
+
+def clean_text(text: str) -> str:
+    """Crossref titles can hold HTML entities and tags: "&amp;amp;", "<i>"."""
+    return re.sub(r"<[^>]+>", "", html.unescape(html.unescape(text))).strip()
+
+
+def crossref_title(msg: dict) -> str:
+    """Title and subtitle as one string.
+
+    Crossref stores "dEFEND: Explainable Fake News Detection" as the title
+    "dEFEND" and a separate subtitle, so the title alone is not the paper's
+    title.
+    """
+    title = clean_text((msg.get("title") or [""])[0])
+    subtitle = clean_text((msg.get("subtitle") or [""])[0])
+    if subtitle and normalize_title(subtitle) not in normalize_title(title):
+        title = f"{title}: {subtitle}"
+    return title
+
+
+def crossref_record(msg: dict) -> dict:
     parts = (msg.get("issued") or {}).get("date-parts") or [[None]]
-    return True, [{"title": titles[0] if titles else "",
-                   "authors": [a.get("family") or a.get("name") or ""
-                               for a in msg.get("author") or []],
-                   "year": parts[0][0] if parts[0] else None}], "crossref", ""
+    return {"title": crossref_title(msg),
+            "authors": [a.get("family") or a.get("name") or ""
+                        for a in msg.get("author") or []],
+            "year": parts[0][0] if parts[0] else None}
+
+
+def search_crossref(text: str, rows: int = 5) -> list[dict]:
+    """Crossref bibliographic search. It ranks by relevance and finds papers
+    whose short title is an acronym, which OpenAlex title.search misses."""
+    url = ("https://api.crossref.org/works?rows=" + str(rows)
+           + "&select=DOI,title,subtitle,author,issued,container-title,type"
+           + "&query.bibliographic=" + urllib.parse.quote(text))
+    status, body = get(url)
+    if status != 200:
+        raise RuntimeError(f"Crossref search failed (HTTP {status})")
+    return json.loads(body).get("message", {}).get("items") or []
 
 
 def lookup_arxiv(eprint: str):
@@ -291,7 +343,17 @@ def lookup_title(title: str, first_author: str = ""):
         if results:
             break
     if not results:
-        return False, None, "openalex", "no title match found"
+        # OpenAlex needs every word in its stored title, and it stores some
+        # papers under an acronym only ("dEFEND"). Crossref's ranked search
+        # still finds them. check_entry then compares title, authors and year,
+        # so an unrelated ranked hit cannot pass.
+        # A ranked search always returns something, so keep only title matches.
+        records = [r for r in map(crossref_record,
+                                  search_crossref(f"{title} {first_author}".strip()))
+                   if titles_match(title, r["title"]) >= TITLE_MATCH_THRESHOLD]
+        if not records:
+            return False, None, "openalex+crossref", "no title match found"
+        return True, records, "crossref", ""
     return True, [{"title": work.get("title") or "",
                    "authors": [(a.get("author") or {}).get("display_name") or ""
                                for a in work.get("authorships") or []],

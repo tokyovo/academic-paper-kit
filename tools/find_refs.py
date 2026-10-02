@@ -10,10 +10,16 @@ Usage:
     python tools/find_refs.py arXiv:1706.03762
     python tools/find_refs.py "attention is all you need"
     python tools/find_refs.py "..." --append        # write to paper/refs.bib
+    python tools/find_refs.py "..." --append --bib notes/agent1.bib
 
 With a title, it prints the top three candidates and you pick one. It will
-not append on a title search unless exactly one candidate is returned, so a
-human or agent always sees what is being added.
+not append on a title search unless exactly one OpenAlex candidate is
+returned, so a human or agent always sees what is being added. When OpenAlex
+finds nothing, it lists Crossref's best matches and never appends them.
+
+--append never drops a paper: if the cite key is taken by a different paper,
+the new entry gets a suffix (smith2020deepb). The same DOI or arXiv ID twice
+is not appended.
 """
 
 from __future__ import annotations
@@ -26,7 +32,9 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from check_refs import arxiv_id_from_doi, clean_doi, get, normalize_title  # noqa: E402
+from check_refs import (arxiv_id_from_doi, clean_doi, clean_text,  # noqa: E402
+                        crossref_title, get, normalize_title, parse_bib,
+                        search_crossref)
 
 BIB_PATH = "paper/refs.bib"
 
@@ -51,6 +59,9 @@ def fmt(entry_type: str, key: str, fields: dict) -> str:
     lines = [f"@{entry_type}{{{key},"]
     for name, value in fields.items():
         if value:
+            if name not in ("doi", "eprint", "url"):
+                # A bare & or % in a field breaks the LaTeX build.
+                value = re.sub(r"(?<!\\)([&%])", r"\\\1", str(value))
             lines.append(f"  {name.ljust(width)} = {{{value}}},")
     lines[-1] = lines[-1].rstrip(",")
     lines.append("}")
@@ -72,12 +83,12 @@ def from_crossref(doi: str) -> str | None:
         if parts and parts[0] and parts[0][0]:
             year = str(parts[0][0])
             break
-    title = (m.get("title") or [""])[0]
+    title = crossref_title(m)
     kind = m.get("type", "")
     entry_type = {"proceedings-article": "inproceedings",
                   "book-chapter": "incollection",
                   "book": "book"}.get(kind, "article")
-    container = (m.get("container-title") or [""])[0]
+    container = clean_text((m.get("container-title") or [""])[0])
     fields = {
         "title": title,
         "author": " and ".join(authors),
@@ -141,59 +152,125 @@ def search_openalex(title: str) -> list[dict]:
     if status != 200:
         print(f"find-refs: OpenAlex search failed (HTTP {status}).")
         return []
-    return json.loads(body).get("results") or []
+    return [{"title": r.get("title") or "",
+             "year": r.get("publication_year"),
+             "doi": (r.get("doi") or "").replace("https://doi.org/", ""),
+             "authors": [(a.get("author") or {}).get("display_name") or ""
+                         for a in r.get("authorships") or []],
+             "venue": ((r.get("primary_location") or {}).get("source") or {})
+             .get("display_name") or ""}
+            for r in json.loads(body).get("results") or []]
+
+
+def search_crossref_candidates(title: str) -> list[dict]:
+    out = []
+    for m in search_crossref(title, rows=3):
+        parts = (m.get("issued") or {}).get("date-parts") or [[None]]
+        out.append({"title": crossref_title(m),
+                    "year": parts[0][0] if parts[0] else None,
+                    "doi": m.get("DOI", ""),
+                    "authors": [a.get("family") or a.get("name") or ""
+                                for a in m.get("author") or []],
+                    "venue": clean_text((m.get("container-title") or [""])[0])})
+    return out
+
+
+def show(candidates: list[dict]) -> None:
+    for n, c in enumerate(candidates, 1):
+        authors = ", ".join(c["authors"][:3]) + (" et al." if len(c["authors"]) > 3 else "")
+        print(f"  {n}. {c['title']}")
+        print(f"     {authors or 'no authors listed'}")
+        print(f"     {c['year']} · {c['venue'] or 'no venue'} · {c['doi'] or 'no DOI'}\n")
+
+
+def ids(fields: dict) -> set[str]:
+    """What identifies the paper behind an entry: its DOI and arXiv ID."""
+    doi = clean_doi(fields.get("doi", "")).lower()
+    return {i for i in (doi, arxiv_id_from_doi(doi) or "",
+                        fields.get("eprint", "").lower()) if i}
+
+
+def append_entry(entry: str, bib_path: str) -> int:
+    existing = ""
+    if os.path.exists(bib_path):
+        with open(bib_path) as fh:
+            existing = fh.read()
+    new = parse_bib(entry)[0]
+    by_key = {e["key"]: e for e in parse_bib(existing)}
+    for e in by_key.values():
+        if ids(e["fields"]) & ids(new["fields"]):
+            print(f"\nfind-refs: this paper is already in {bib_path} as {e['key']}. "
+                  "Nothing appended.")
+            return 0
+    # The key is surname + year + first title word, so two different papers
+    # can share it. Never drop the second one: give it a suffix.
+    key = new["key"]
+    for suffix in "bcdefghijklmnopqrstuvwxyz":
+        if key not in by_key:
+            break
+        key = new["key"] + suffix
+    if key != new["key"]:
+        print(f"\nfind-refs: {new['key']} is already used by another paper. "
+              f"This one is {key}.")
+        entry = entry.replace("{" + new["key"] + ",", "{" + key + ",", 1)
+    with open(bib_path, "a") as fh:
+        fh.write(("\n" if existing.strip() else "") + entry + "\n")
+    print(f"\nfind-refs: appended {key} to {bib_path}. Now run: make check-refs")
+    return 0
 
 
 def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    append = "--append" in sys.argv[1:]
+    argv = sys.argv[1:]
+    bib_path = BIB_PATH
+    if "--bib" in argv:
+        i = argv.index("--bib")
+        bib_path = argv[i + 1]
+        del argv[i:i + 2]
+    args = [a for a in argv if not a.startswith("--")]
+    append = "--append" in argv
     if not args:
         print(__doc__)
         return 2
     query = " ".join(args)
 
-    if re.match(r"^(https?://(dx\.)?doi\.org/|doi:)?10\.\d{4,9}/", query, re.I):
-        entry = from_doi(clean_doi(query))
-    elif re.match(r"^(arxiv:)?\d{4}\.\d{4,5}(v\d+)?$", query, re.I):
-        entry = from_arxiv(query)
-    else:
-        results = search_openalex(query)
-        if not results:
-            print(f'find-refs: nothing found for "{query}".')
-            print("Write \\todo{CITE: ...} in the manuscript instead of guessing.")
-            return 1
-        print(f'Candidates for "{query}":\n')
-        for n, r in enumerate(results, 1):
-            doi = (r.get("doi") or "").replace("https://doi.org/", "") or "no DOI"
-            print(f"  {n}. {r.get('title')}")
-            print(f"     {r.get('publication_year')} · {doi}\n")
-        if len(results) > 1:
-            print("More than one candidate. Re-run with the DOI of the right one.")
-            return 0
-        doi = (results[0].get("doi") or "").replace("https://doi.org/", "")
-        if not doi:
-            print("The only candidate has no DOI. Import it through Zotero instead.")
-            return 1
-        entry = from_doi(doi)
+    try:
+        if re.match(r"^(https?://(dx\.)?doi\.org/|doi:)?10\.\d{4,9}/", query, re.I):
+            entry = from_doi(clean_doi(query))
+        elif re.match(r"^(arxiv:)?\d{4}\.\d{4,5}(v\d+)?$", query, re.I):
+            entry = from_arxiv(query)
+        else:
+            candidates = search_openalex(query)
+            source = "OpenAlex"
+            if not candidates:
+                # OpenAlex stores some papers under an acronym title only
+                # ("dEFEND"), so its title filter misses them.
+                candidates = search_crossref_candidates(query)
+                source = "Crossref"
+            if not candidates:
+                print(f'find-refs: nothing found for "{query}".')
+                print("Write \\todo{CITE: ...} in the manuscript instead of guessing.")
+                return 1
+            print(f'Candidates for "{query}" ({source}):\n')
+            show(candidates)
+            # Crossref ranks by relevance and always returns something, so its
+            # hits are never appended without a DOI the user picked.
+            if len(candidates) > 1 or source == "Crossref":
+                print("Pick the right one and re-run with its DOI. "
+                      "If none is right, the paper may not exist.")
+                return 0
+            if not candidates[0]["doi"]:
+                print("The only candidate has no DOI. Import it through Zotero instead.")
+                return 1
+            entry = from_doi(candidates[0]["doi"])
+    except RuntimeError as exc:
+        print(f"find-refs: {exc}. Nothing was looked up; try again later.")
+        return 1
 
     if not entry:
         return 1
 
     print(entry)
-    if append:
-        key = entry.split("{", 1)[1].split(",", 1)[0]
-        existing = ""
-        if os.path.exists(BIB_PATH):
-            with open(BIB_PATH) as fh:
-                existing = fh.read()
-        if f"{{{key}," in existing:
-            print(f"\nfind-refs: {key} is already in {BIB_PATH}. Nothing appended.")
-            return 0
-        with open(BIB_PATH, "a") as fh:
-            fh.write(("\n" if existing.strip() else "") + entry + "\n")
-        print(f"\nfind-refs: appended {key} to {BIB_PATH}. "
-              f"Now run: make check-refs")
-    return 0
+    return append_entry(entry, bib_path) if append else 0
 
 
 if __name__ == "__main__":
