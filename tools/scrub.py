@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 r"""Scan the manuscript for the things that get papers desk-rejected.
 
-Three checks:
+Four checks:
   1. Leftover model text ("As an AI", "Certainly!", "I hope this helps").
   2. Placeholders that were never filled (TODO, \todo{CITE}, [insert], X.XX).
   3. Every \cite key resolves to an entry in refs.bib.
+  4. No hand-typed decimal or percentage: our numbers come from the result
+     macros that make tables writes, and another paper's number needs its
+     \cite on the same line.
 
 arXiv's own ban policy names exactly these as evidence that the authors did
 not check their generated output. Run this before every submission and every
@@ -41,8 +44,13 @@ PLACEHOLDERS = [
     r"\[insert[^\]]*\]", r"\[fill in[^\]]*\]", r"lorem ipsum",
     r"\bX\.XX\b", r"\bN\.NN\b", r"\b\?\?\?\b", r"\bTK\b",
     r"\\cite\{\s*\}", r"\\cite\{(?:TODO|CITE|XXX|ref)\}",
-    r"\\ref\{\s*\}", r"placeholder",
+    r"\\ref\{\s*\}", r"placeholder", r"[Ww]rite the caption here",
 ]
+
+# A decimal number or a percentage typed into the text. Our own numbers must
+# come from the result macros (\resLiar...), and a number from another paper
+# needs its \cite on the same line (one sentence per line).
+HAND_NUMBER = r"(?<![\w.\\])\d+\.\d+(?![\w.])|(?<![\w.\\])\d+(?:\.\d+)?\s*\\%"
 
 # Claims that need a citation in the same sentence. Warning, not blocking.
 SUPERLATIVES = [
@@ -127,6 +135,14 @@ def main() -> int:
                     m = re.search(pattern, line)
                     if m:
                         blocking.append(f"{where}  placeholder: \"{m.group(0).strip()}\"")
+
+                # Generated tables hold numbers by design.
+                generated = os.sep + "tables" + os.sep in path
+                m = re.search(HAND_NUMBER, line)
+                if m and not generated and "\\cite" not in line:
+                    blocking.append(
+                        f"{where}  hand-typed number \"{m.group(0)}\": use a result "
+                        "macro from make tables, or cite its source on this line")
 
                 for m in re.finditer(r"\\cite[a-zA-Z]*\s*(?:\[[^\]]*\])*\{([^}]*)\}", line):
                     for key in m.group(1).split(","):

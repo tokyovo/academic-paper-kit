@@ -123,15 +123,22 @@ No dependencies: the tools use the Python standard library only.
 
 - `paper/tables/` and `paper/figures/` are generated and git-ignored.
   Run `make tables figures` before `make paper`.
-- A result file holds `run_id`, `commit`, `seed`, `dataset` and `metrics{}`.
+- A result file holds `run_id` (same as the file name), `commit` (a commit in
+  this repo), `seed`, `dataset`, `environment{}` and `metrics{}`.
+  `make check-results` enforces this.
+- `make tables` also writes `paper/tables/results_macros.tex`: one macro per
+  metric (`\resLiarTextTestAccuracy`). Write numbers in the text with these.
+  `scrub` blocks a hand-typed decimal or percentage unless the line has a
+  `\cite`.
 - `find_refs.py` imports `get`, `clean_doi`, `normalize_title` and
   `arxiv_id_from_doi` from `check_refs.py`. After a change to one, test both.
 - `scrub.py` skips any line that contains `scrub:ignore` and every macro
   definition. The `\todo` macro in `paper/main.tex` depends on this.
 - The gates differ:
-  - `make check` runs tables, figures, check-refs (no cache), scrub and paper.
-    It does not run the ledger check.
+  - `make check` runs tables, figures, check-refs (no cache), check-results,
+    check-extractions, ledger, scrub and paper.
   - CI runs check-refs, scrub, ledger and the self-tests.
-    It does not build the PDF.
+    It does not build the PDF or check result files (the template's example
+    result has no real commit, so check-results fails until you delete it).
 - `AGENTS.md` and `GEMINI.md` are symlinks to this file.
   Keep it neutral to the agent.
