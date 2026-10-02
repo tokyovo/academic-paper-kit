@@ -46,7 +46,8 @@ present), and the skill that fits your section:
 
 One row per claim in your ledger file, with the header
 `| Claim | Section | Evidence | Status |`. Evidence is a result file, a
-script, or `sources/<key>.pdf p.N`.
+script, or `sources/<key>.pdf p.N`. A comparison lists every file it
+compares, separated by `;`.
 
 ## Before you finish
 

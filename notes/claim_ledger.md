@@ -10,7 +10,8 @@ Fill the columns like this:
 - **Section** — the file it appears in, for example `paper/sections/05_results.tex`.
 
 - **Evidence** — a path. A result file, a figure script, or `sources/<file>.pdf p.4`
-  for a claim taken from the literature. `external` is allowed only with a
+  for a claim taken from the literature. A comparison lists each file it
+  compares: `a.json; b.json`. `external` is allowed only with a
   cited key.
 
 - **Status** — `verified`, `pending`, or `cut`.

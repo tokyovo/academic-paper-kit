@@ -15,10 +15,10 @@ file. A script checks every handoff. The human decides every claim.
  H1 scope ─▶ search ─▶ H2 screening ─▶ add refs + PDFs ─▶ read (1 agent per PDF) ─┐
  (human)     (lead)    (human)          check-refs, pdfs    check-extractions       │
                                                                                      ▼
- H5 submit ◀─ H4 human parts ◀─ audit ◀─ merge ◀─ draft (1 agent per ◀─ H3 outline ◀─ experiments
- make check   title, abstract,   (fresh   make     section group)       (human)        check-results,
-              contributions      agent)   paper    check-evidence,                     make tables
-                                                   scrub --draft, ledger
+ H5 submit ◀─ H4 human parts ◀─ integration ◀─ audit ◀─ merge ◀─ draft (1 agent per ◀─ H3 outline ◀─ experiments
+ make check   title, abstract,   pass (one       (fresh   make     section group)       (human)        check-results,
+              contributions      agent reads     agent)   paper    check-evidence,                     make tables
+                                 it all)                           scrub --draft, ledger
 ```
 
 `H1` to `H5` are human gates. A Claude Code subagent cannot ask the human a
@@ -82,6 +82,13 @@ These came from running the workflow end to end, and each one changed the kit.
 - **The gate passed an empty template.** The title "Working title: replace
   this", "Your Name" and empty sections all passed `scrub`. They now block,
   and CI uses `scrub --draft` so a draft in progress can still pass CI.
+- **The auditor found what no script could, at the joins.** With every
+  check green, it still found 1 unsupported and 3 overstated citations,
+  and one contradiction between the two writers (label balance). Each
+  half was clean; the problems were where they meet. So the pipeline now
+  has an integration pass by one agent after the audit.
+- **Comparison claims need both runs as evidence.** A ledger row may list
+  several paths: `a.json; b.json`. `make ledger` checks each.
 - **Parallel writers need a lead to merge.** The results writer could not
   cite, so it left `\todo{CITE}` for the dataset; the lead resolved it.
   Neither writer could write the AI-use log; the lead did.

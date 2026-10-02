@@ -34,7 +34,8 @@ file, and stop at each human gate. The full rationale is in
 | 7 | Experiments | lead | runs, yes | `make check-results`, `make tables` |
 | 8 | Draft | `paper-writer`, one per section group | yes | `make check-evidence`, `scrub --draft`, `make ledger` |
 | 9 | Merge | lead | no | `make paper` (0 undefined), cross-writer `\todo`s resolved |
-| 10 | Audit | `paper-auditor` | no | advisory: `notes/audit.md`; lead fixes, human reviews |
+| 10 | Audit | `paper-auditor` | no | advisory: `notes/audit.md` |
+| 10b | Integration pass: read the whole paper, fix the audit findings and the joins | lead (one agent) | no | `make check-evidence`, `make ledger`, `scrub --draft` |
 | 11 | Human parts | human | no | gate H4: title, abstract, contributions, conclusion |
 | 12 | Submit | lead + `pre-submission` skill | no | gate H5: `make check` clean |
 
@@ -71,9 +72,16 @@ writer could not (for example a citation in a section whose writer did not
 own citations). Remove the template example result and its ledger row once
 real runs exist. Commit.
 
-**10. Audit.** Spawn one `paper-auditor`. Fix OVERSTATED and UNSUPPORTED
-sentences and wording that does not fit the numbers. Show the human the
-rest of `notes/audit.md`.
+**10. Audit.** Spawn one `paper-auditor`. Show the human `notes/audit.md`.
+
+**10b. Integration pass.** Parallel writers do not see each other's text,
+so the problems are at the joins: in the trial, the results writer said
+LIAR's labels are not balanced while the related-work writer cited the
+LIAR paper, which says they are. One agent (the lead) reads the whole
+paper and fixes: OVERSTATED and UNSUPPORTED sentences; wording that does
+not fit the numbers; contradictions between sections; different names for
+the same method or metric. Update the ledger rows of every sentence you
+change. Run the stage checks again.
 
 **12. Submit.** `make check` must pass with no `--draft`. Then use the
 `pre-submission` skill for the venue's disclosure.

@@ -61,9 +61,11 @@ def main() -> int:
         short = (claim[:58] + "...") if len(claim) > 61 else claim
         problems = []
         if evidence.lower() != "external" and not re.match(r"^\\cite", evidence):
-            file_part = evidence.split(" p.")[0].split("#")[0].strip("` ")
-            if file_part and not os.path.exists(file_part):
-                problems.append(f"evidence not found: {file_part}")
+            # A comparison needs both runs: "a.json; b.json".
+            for part in evidence.split(";"):
+                file_part = part.split(" p.")[0].split("#")[0].strip("` ")
+                if file_part and not os.path.exists(file_part):
+                    problems.append(f"evidence not found: {file_part}")
         if section and not os.path.exists(section.strip("` ")):
             problems.append(f"section file not found: {section}")
         if problems:
