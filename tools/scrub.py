@@ -17,6 +17,10 @@ Usage:
     python tools/scrub.py [paper_dir] [--strict]
 
 --strict also fails on unused bib entries and on hedge-free superlatives.
+--draft reports unfinished work (\todo, template text, empty sections) as
+warnings, for CI on a draft in progress. Signs of fabrication stay blocking:
+model text, unknown cite keys and hand-typed numbers. make check runs
+without --draft.
 Exit status is 1 if anything blocking is found.
 """
 
@@ -45,6 +49,9 @@ PLACEHOLDERS = [
     r"\bX\.XX\b", r"\bN\.NN\b", r"\b\?\?\?\b", r"\bTK\b",
     r"\\cite\{\s*\}", r"\\cite\{(?:TODO|CITE|XXX|ref)\}",
     r"\\ref\{\s*\}", r"placeholder", r"[Ww]rite the caption here",
+    # Leftovers of the template's own title block and abstract.
+    r"Working title: replace this", r"\bYour Name\b", r"\bYour Institution\b",
+    r"you@example\.edu", r"The human author writes this",
 ]
 
 # A decimal number or a percentage typed into the text. Our own numbers must
@@ -97,6 +104,8 @@ def bib_keys(bib_path: str) -> set[str]:
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     strict = "--strict" in sys.argv[1:]
+    # Unfinished work blocks a submission, not a draft.
+    draft = "--draft" in sys.argv[1:]
     paper_dir = args[0] if args else "paper"
     bib_path = os.path.join(paper_dir, "refs.bib")
 
@@ -109,8 +118,11 @@ def main() -> int:
     blocking: list[str] = []
     warnings: list[str] = []
     cited: set[str] = set()
+    unfinished = warnings if draft else blocking
 
     for path in files:
+        # A section file with a heading and no text passes every other check.
+        has_section = has_text = False
         with open(path, encoding="utf-8", errors="replace") as fh:
             for lineno, raw in enumerate(fh, 1):
                 # An escape hatch for a line that must contain a trigger
@@ -125,6 +137,10 @@ def main() -> int:
                              r"|\\def\\", line):
                     continue
                 where = f"{path}:{lineno}"
+                if re.match(r"\s*\\section\*?\{", line):
+                    has_section = True
+                elif has_section:
+                    has_text = True
 
                 for pattern in MODEL_TEXT:
                     m = re.search(pattern, line, re.I)
@@ -134,7 +150,7 @@ def main() -> int:
                 for pattern in PLACEHOLDERS:
                     m = re.search(pattern, line)
                     if m:
-                        blocking.append(f"{where}  placeholder: \"{m.group(0).strip()}\"")
+                        unfinished.append(f"{where}  placeholder: \"{m.group(0).strip()}\"")
 
                 # Generated tables hold numbers by design.
                 generated = os.sep + "tables" + os.sep in path
@@ -161,6 +177,8 @@ def main() -> int:
                         if m and "\\cite" not in line:
                             warnings.append(
                                 f"{where}  \"{m.group(0)}\" with no citation on the line")
+        if has_section and not has_text:
+            unfinished.append(f"{path}  empty section: write it, or remove its \\input")
 
     if strict and keys:
         for key in sorted(keys - cited):

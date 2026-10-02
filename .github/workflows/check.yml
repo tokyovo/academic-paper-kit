@@ -20,8 +20,11 @@ jobs:
       - name: Verify every reference
         run: python tools/check_refs.py paper/refs.bib --no-cache
 
+      # --draft: a draft may have \todo and empty sections. Model text,
+      # unknown cite keys and hand-typed numbers still fail. make check,
+      # the submission gate, runs without --draft.
       - name: Scrub the manuscript
-        run: python tools/scrub.py paper --strict
+        run: python tools/scrub.py paper --strict --draft
 
       - name: Check the claim ledger
         run: python tools/check_ledger.py
