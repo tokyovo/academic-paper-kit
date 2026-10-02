@@ -7,7 +7,7 @@ BIB       := $(PAPER_DIR)/refs.bib
 PYTHON    := python3
 
 .PHONY: help paper figures tables check check-refs check-refs-fresh scrub \
-        find-refs ledger pdfs check-extractions check-results clean distclean test
+        find-refs ledger pdfs check-extractions check-results check-evidence clean distclean test
 
 help:
 	@echo "Targets:"
@@ -16,12 +16,13 @@ help:
 	@echo "  make tables       regenerate LaTeX tables from experiments/results/"
 	@echo "  make check-refs   verify every reference against Crossref/arXiv/OpenAlex"
 	@echo "  make scrub        find leftover AI text, placeholders, unknown cite keys"
-	@echo "  make check        tables, figures, refs, results, extractions, ledger, scrub, paper (the gate)"
+	@echo "  make check        tables, figures, refs, results, extractions, evidence, ledger, scrub, paper (the gate)"
 	@echo "  make find-refs Q=<doi|arxiv id|title>   look up a real reference"
 	@echo "  make ledger       show claims that have no evidence file yet"
 	@echo "  make pdfs         download open-access PDFs for refs.bib into sources/"
 	@echo "  make check-extractions   every quote in notes/extractions/ is in its PDF"
 	@echo "  make check-results       every result file names its commit, seed and data"
+	@echo "  make check-evidence      every cited sentence has a quote that is in its PDF"
 	@echo "  make test         run the tool self-tests"
 	@echo "  make clean        remove LaTeX build files"
 
@@ -69,8 +70,11 @@ check-extractions:
 check-results:
 	$(PYTHON) tools/check_results.py experiments/results
 
+check-evidence:
+	$(PYTHON) tools/check_evidence.py paper/sections
+
 # The pre-submission gate. Any failure stops the chain.
-check: tables figures check-refs-fresh check-results check-extractions ledger scrub paper
+check: tables figures check-refs-fresh check-results check-extractions check-evidence ledger scrub paper
 	@echo
 	@echo "All checks passed. Still your job before submitting:"
 	@echo "  - confirm the abstract and contribution claims are yours"

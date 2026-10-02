@@ -13,11 +13,13 @@ Exit status is 1 if any row has missing evidence.
 
 from __future__ import annotations
 
+import glob
 import os
 import re
 import sys
 
 LEDGER = "notes/claim_ledger.md"
+CLAIMS_DIR = "notes/claims"
 
 
 def rows(path: str) -> list[list[str]]:
@@ -43,6 +45,12 @@ def main() -> int:
         return 1
 
     entries = rows(path)
+    if len(sys.argv) == 1:
+        # Parallel writers each keep their own ledger, one file per section,
+        # so they never edit the same file at the same time.
+        for extra in sorted(glob.glob(os.path.join(CLAIMS_DIR, "*.md"))):
+            entries += rows(extra)
+            path += f" + {extra}"
     if not entries:
         print(f"ledger: {path} has no claim rows yet.")
         return 0

@@ -136,7 +136,7 @@ No dependencies: the tools use the Python standard library only.
   definition. The `\todo` macro in `paper/main.tex` depends on this.
 - The gates differ:
   - `make check` runs tables, figures, check-refs (no cache), check-results,
-    check-extractions, ledger, scrub and paper.
+    check-extractions, check-evidence, ledger, scrub and paper.
   - CI runs check-refs, scrub, ledger and the self-tests.
     It does not build the PDF or check result files (the template's example
     result has no real commit, so check-results fails until you delete it).
