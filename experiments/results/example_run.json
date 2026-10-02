@@ -1,0 +1,13 @@
+{
+  "run_id": "example_run",
+  "commit": "0000000",
+  "seed": 0,
+  "config": "experiments/configs/example.yaml",
+  "dataset": "example-v1",
+  "metrics": {
+    "accuracy": 0.8124,
+    "f1": 0.7903,
+    "latency_ms": 42.5
+  },
+  "note": "Placeholder so make tables and make figures run on a fresh clone. Delete it once you have real runs."
+}

@@ -1,0 +1,51 @@
+% Swap this preamble for your venue's style file when you have it.
+% Keep one sentence per line in the section files: it keeps diffs readable.
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+% Optional packages: guarded so the skeleton still builds on a minimal
+% TeX install. Install them (or your venue's style file) when you need them.
+\IfFileExists{siunitx.sty}{\usepackage{siunitx}}{}
+\IfFileExists{natbib.sty}{\usepackage[numbers,sort&compress]{natbib}}{}
+\IfFileExists{hyperref.sty}{\usepackage[colorlinks=true,allcolors=blue]{hyperref}}{}
+
+% \todo{} is deliberately loud. An unresolved marker must be impossible to
+% miss, and tools/scrub.py fails the build while any remain.
+\usepackage{xcolor}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+\graphicspath{{figures/}}
+
+\title{Working title: replace this}
+\author{Your Name\\ Your Institution\\ \texttt{you@example.edu}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The human author writes this.
+Do not let an agent draft the abstract before the contribution claims are settled.
+\end{abstract}
+
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_method}
+\input{sections/04_experiments}
+\input{sections/05_results}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Switch to your venue's .bst when you adopt its style file.
+\IfFileExists{plainnat.bst}{\bibliographystyle{plainnat}}{\bibliographystyle{plain}}
+\bibliography{refs}
+
+\appendix
+\input{sections/99_appendix}
+
+\end{document}

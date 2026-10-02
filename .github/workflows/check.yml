@@ -1,0 +1,33 @@
+name: check
+
+# The same gate the author runs locally. It catches a fabricated citation or a
+# leftover placeholder before a co-author ever sees the draft.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify every reference
+        run: python tools/check_refs.py paper/refs.bib --no-cache
+
+      - name: Scrub the manuscript
+        run: python tools/scrub.py paper --strict
+
+      - name: Check the claim ledger
+        run: python tools/check_ledger.py
+
+      - name: Tool self-tests
+        run: |
+          echo "Both of these must exit non-zero: the fixtures are deliberately bad."
+          ! python tools/check_refs.py tools/tests/sample.bib --no-cache
+          ! python tools/scrub.py tools/tests/dirty --strict

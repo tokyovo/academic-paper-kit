@@ -1,0 +1,36 @@
+% Test fixture for tools/check_refs.py.
+% Two entries are real. Two are fabricated on purpose, the way a model
+% hallucinates them: plausible title, plausible venue, nothing behind it.
+% Expected result: 2 verified, 2 bad.
+
+@inproceedings{bender2021parrots,
+  title     = {On the Dangers of Stochastic Parrots: Can Language Models Be Too Big?},
+  author    = {Bender, Emily M. and Gebru, Timnit and McMillan-Major, Angelina and Shmitchell, Shmargaret},
+  booktitle = {Proceedings of the 2021 ACM Conference on Fairness, Accountability, and Transparency},
+  year      = {2021},
+  doi       = {10.1145/3442188.3445922}
+}
+
+@article{vaswani2017attention,
+  title         = {Attention Is All You Need},
+  author        = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, Lukasz and Polosukhin, Illia},
+  journal       = {arXiv preprint},
+  year          = {2017},
+  eprint        = {1706.03762},
+  archiveprefix = {arXiv}
+}
+
+@article{fabricated2026doi,
+  title   = {Self-Verifying Transformers for Automated Citation Integrity},
+  author  = {Smith, John and Doe, Jane},
+  journal = {Journal of Machine Learning Research},
+  year    = {2026},
+  doi     = {10.9999/jmlr.2026.00417}
+}
+
+@inproceedings{fabricated2025title,
+  title     = {Hierarchical Attention Networks for Municipal Parking Compliance Forecasting},
+  author    = {Nguyen, Minh and Garcia, Luis},
+  booktitle = {Proceedings of the 39th Conference on Neural Information Processing Systems},
+  year      = {2025}
+}

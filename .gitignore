@@ -1,0 +1,36 @@
+# LaTeX build
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.synctex.gz
+*.toc
+*.pdf
+!docs/*.pdf
+
+# Generated outputs: regenerate with make tables / make figures
+paper/tables/*.tex
+paper/figures/*.pdf
+paper/figures/*.png
+
+# Source PDFs stay local
+sources/*.pdf
+sources/*.PDF
+
+# Tool cache
+.cache/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editors and OS
+.DS_Store
+*.swp

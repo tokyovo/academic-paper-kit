@@ -1,0 +1,6 @@
+# One config file per run. The run writes its own path into the result JSON,
+# so a number in the paper can always be traced back to the exact settings.
+dataset: example-v1
+seed: 0
+model: baseline
+epochs: 1
