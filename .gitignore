@@ -34,3 +34,7 @@ venv/
 # Editors and OS
 .DS_Store
 *.swp
+
+# Local research output
+reports/
+research_notes/

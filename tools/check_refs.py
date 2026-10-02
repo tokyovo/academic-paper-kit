@@ -16,7 +16,8 @@ citation, so the title comparison is not optional.
 Usage:
     python tools/check_refs.py [paper/refs.bib] [--no-cache] [--quiet]
 
-Exit status is 1 if any entry fails, so it can gate a Makefile or CI job.
+Exit status is 1 if any entry fails or cannot be checked (network or API
+error), so it can gate a Makefile or CI job.
 """
 
 from __future__ import annotations
@@ -365,7 +366,8 @@ def main() -> int:
         print("\nSome entries could not be checked (network or API trouble). "
               "Re-run before\nyou submit; an unchecked reference is not a verified one.")
 
-    return 1 if bad else 0
+    # An unchecked reference is not a verified one, so errors fail too.
+    return 1 if bad or errors else 0
 
 
 if __name__ == "__main__":

@@ -93,3 +93,45 @@ Then tell the human what `docs/venues.md` requires for their venue.
 
 - Do not upload a manuscript you are reviewing for a venue into any model.
   Most venues forbid it.
+
+## Working on the repo itself
+
+No dependencies: the tools use the Python standard library only.
+`matplotlib` is optional (figures). `latexmk` is needed only for `make paper`.
+
+### Commands
+
+- `make help` lists every target.
+- `make test` runs the checkers on deliberately bad fixtures.
+  Both tools must exit non-zero. CI asserts this with `!`.
+- Run one checker alone:
+  - `python3 tools/check_refs.py tools/tests/sample.bib --no-cache`
+    (expect 2 ok, 2 NOT FOUND, exit 1)
+  - `python3 tools/scrub.py tools/tests/dirty --strict` (expect 7 blocking)
+- `check_refs.py` needs the network.
+  It exits 1 when a lookup fails, so an offline run fails.
+  The cache `.cache/refs.json` keeps only `ok` and `manual` results.
+  `make check` uses `--no-cache`.
+
+### How the parts connect
+
+    experiments/results/*.json ──> analysis/make_tables.py  ──> paper/tables/*.tex
+                               └─> analysis/make_figures.py ──> paper/figures/
+    make find-refs (tools/find_refs.py) ──> paper/refs.bib ──> make check-refs
+    paper/**/*.tex ──> make scrub (every \cite key must be in refs.bib)
+    notes/claim_ledger.md ──> make ledger (evidence paths must exist)
+
+- `paper/tables/` and `paper/figures/` are generated and git-ignored.
+  Run `make tables figures` before `make paper`.
+- A result file holds `run_id`, `commit`, `seed`, `dataset` and `metrics{}`.
+- `find_refs.py` imports `get`, `clean_doi` and `normalize_title` from
+  `check_refs.py`. After a change to one, test both.
+- `scrub.py` skips any line that contains `scrub:ignore` and every macro
+  definition. The `\todo` macro in `paper/main.tex` depends on this.
+- The gates differ:
+  - `make check` runs tables, figures, check-refs (no cache), scrub and paper.
+    It does not run the ledger check.
+  - CI runs check-refs, scrub, ledger and the self-tests.
+    It does not build the PDF.
+- `AGENTS.md` and `GEMINI.md` are symlinks to this file.
+  Keep it neutral to the agent.

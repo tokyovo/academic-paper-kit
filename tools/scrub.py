@@ -134,7 +134,8 @@ def main() -> int:
                         if not key:
                             continue
                         cited.add(key)
-                        if keys and key not in keys:
+                        # An empty refs.bib makes every \cite unresolved.
+                        if key not in keys:
                             blocking.append(
                                 f"{where}  \\cite{{{key}}} is not in {bib_path}")
 
