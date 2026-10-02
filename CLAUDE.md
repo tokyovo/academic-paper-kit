@@ -106,7 +106,7 @@ No dependencies: the tools use the Python standard library only.
   Both tools must exit non-zero. CI asserts this with `!`.
 - Run one checker alone:
   - `python3 tools/check_refs.py tools/tests/sample.bib --no-cache`
-    (expect 2 ok, 2 NOT FOUND, exit 1)
+    (expect 2 ok, 2 NOT FOUND, 1 MISMATCH, exit 1)
   - `python3 tools/scrub.py tools/tests/dirty --strict` (expect 7 blocking)
 - `check_refs.py` needs the network.
   It exits 1 when a lookup fails, so an offline run fails.

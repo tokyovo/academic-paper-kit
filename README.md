@@ -77,7 +77,8 @@ make test            # prove the checkers work on deliberately bad fixtures
 ```
 
 `make test` runs two fixtures: a bib file with two real and two fabricated
-references, and a `.tex` file full of the text models leave behind. Both are
+references plus one real title with invented authors, and a `.tex` file full
+of the text models leave behind. Both are
 expected to fail, which is how you know the checkers work.
 
 ## The rules, in short

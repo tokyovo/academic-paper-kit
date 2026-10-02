@@ -1,7 +1,8 @@
 % Test fixture for tools/check_refs.py.
 % Two entries are real. Two are fabricated on purpose, the way a model
 % hallucinates them: plausible title, plausible venue, nothing behind it.
-% Expected result: 2 verified, 2 bad.
+% One is chimeric: a real DOI and title with an invented author and year.
+% Expected result: 2 verified, 3 bad.
 
 @inproceedings{bender2021parrots,
   title     = {On the Dangers of Stochastic Parrots: Can Language Models Be Too Big?},
@@ -33,4 +34,12 @@
   author    = {Nguyen, Minh and Garcia, Luis},
   booktitle = {Proceedings of the 39th Conference on Neural Information Processing Systems},
   year      = {2025}
+}
+
+@inproceedings{chimeric2019parrots,
+  title     = {On the Dangers of Stochastic Parrots: Can Language Models Be Too Big?},
+  author    = {Wilson, Robert and Chen, Li},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2019},
+  doi       = {10.1145/3442188.3445922}
 }

@@ -10,8 +10,11 @@ For each entry it tries, in order:
   3. Title -> OpenAlex  (api.openalex.org)
 
 An entry passes when the record exists AND its stored title matches the title
-in the database. A DOI that resolves to a different paper is still a bad
-citation, so the title comparison is not optional.
+in the database AND its authors and year agree with the record. A DOI that
+resolves to a different paper is still a bad citation, and so is a real title
+with invented authors, so none of these comparisons is optional. Every author
+family name in the entry must appear in the record; the year may differ by
+YEAR_TOLERANCE.
 
 Usage:
     python tools/check_refs.py [paper/refs.bib] [--no-cache] [--quiet]
@@ -27,6 +30,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -35,6 +39,9 @@ from difflib import SequenceMatcher
 
 # A title has to match this closely to count as the same paper.
 TITLE_MATCH_THRESHOLD = 0.82
+# A preprint and its published version, or an online-first date and the
+# issue date, are often one year apart.
+YEAR_TOLERANCE = 1
 USER_AGENT = "academic-paper-kit/1.0 (reference verification; +https://github.com/tokyovo/academic-paper-kit)"
 CACHE_PATH = ".cache/refs.json"
 TIMEOUT = 20
@@ -144,6 +151,50 @@ def titles_match(a: str, b: str) -> float:
 
 
 # --------------------------------------------------------------------------
+# Author and year comparison
+# --------------------------------------------------------------------------
+
+def family_name(name: str) -> str:
+    """Last word of a family name, without accents or LaTeX.
+
+    "Bender, Emily M." and "Emily M. Bender" both give "bender";
+    "van der Berg, J." gives "berg".
+    """
+    name = name.split(",")[0] if "," in name else name
+    name = re.sub(r"\\[a-zA-Z]+\s*|\\.", "", name)   # LaTeX accent commands
+    name = name.replace("{", "").replace("}", "")      # M{\"u}ller -> Muller
+    name = unicodedata.normalize("NFKD", name)
+    name = "".join(c for c in name if not unicodedata.combining(c))
+    words = re.sub(r"[^a-z]+", " ", name.lower()).split()
+    return words[-1] if words else ""
+
+
+def bib_family_names(author_field: str) -> list[str]:
+    names = re.split(r"\s+and\s+", author_field.strip())
+    return [f for f in (family_name(n) for n in names
+                        if n.strip().lower() != "others") if f]
+
+
+def authors_and_year_problems(fields: dict, db: dict) -> list[str]:
+    """Return what in the entry contradicts the database record.
+
+    A real DOI or title with an invented author or year is still a bad
+    citation. A field the entry or the record lacks is not compared.
+    """
+    problems = []
+    db_names = {family_name(a) for a in db.get("authors") or []}
+    if db_names:
+        missing = [n for n in bib_family_names(fields.get("author", ""))
+                   if n not in db_names]
+        if missing:
+            problems.append("author(s) not in the record: " + ", ".join(missing))
+    m = re.search(r"\d{4}", fields.get("year", ""))
+    if m and db.get("year") and abs(int(m.group(0)) - db["year"]) > YEAR_TOLERANCE:
+        problems.append(f"year {m.group(0)}, but the record says {db['year']}")
+    return problems
+
+
+# --------------------------------------------------------------------------
 # HTTP
 # --------------------------------------------------------------------------
 
@@ -159,7 +210,8 @@ def get(url: str) -> tuple[int, bytes]:
 
 
 # --------------------------------------------------------------------------
-# Lookups. Each returns (found, db_title, source, note)
+# Lookups. Each returns (found, records, source, note), where records is a
+# list of {"title", "authors", "year"} when found.
 # --------------------------------------------------------------------------
 
 def clean_doi(raw: str) -> str:
@@ -177,7 +229,11 @@ def lookup_doi(doi: str):
         return None, None, "crossref", f"HTTP {status}"
     msg = json.loads(body).get("message", {})
     titles = msg.get("title") or []
-    return True, (titles[0] if titles else ""), "crossref", ""
+    parts = (msg.get("issued") or {}).get("date-parts") or [[None]]
+    return True, [{"title": titles[0] if titles else "",
+                   "authors": [a.get("family") or a.get("name") or ""
+                               for a in msg.get("author") or []],
+                   "year": parts[0][0] if parts[0] else None}], "crossref", ""
 
 
 def lookup_arxiv(eprint: str):
@@ -198,19 +254,39 @@ def lookup_arxiv(eprint: str):
     # The arXiv API answers a bad ID with an entry titled "Error".
     if title.lower().startswith("error"):
         return False, None, "arxiv", "no such arXiv ID"
-    return True, title, "arxiv", ""
+    published = entry.findtext("a:published", "", ns)
+    return True, [{"title": title,
+                   "authors": [a.findtext("a:name", "", ns)
+                               for a in entry.findall("a:author", ns)],
+                   "year": int(published[:4]) if published[:4].isdigit() else None,
+                   }], "arxiv", ""
 
 
-def lookup_title(title: str):
-    url = ("https://api.openalex.org/works?per-page=1&select=id,title,doi"
-           "&filter=title.search:" + urllib.parse.quote(normalize_title(title)))
-    status, body = get(url)
-    if status != 200:
-        return None, None, "openalex", f"HTTP {status}"
-    results = json.loads(body).get("results") or []
+def lookup_title(title: str, first_author: str = ""):
+    # A common title ("Deep Learning") has many records, so the top hit by
+    # title alone is often another paper. Search with the first author too,
+    # and return several candidates for check_entry to pick from. If that
+    # finds nothing, search by title alone so the report can say which
+    # field is wrong.
+    base = ("https://api.openalex.org/works?per-page=5"
+            "&select=id,title,doi,authorships,publication_year"
+            "&filter=title.search:" + urllib.parse.quote(normalize_title(title)))
+    results = []
+    for url in ([base + ",raw_author_name.search:" + first_author]
+                if first_author else []) + [base]:
+        status, body = get(url)
+        if status != 200:
+            return None, None, "openalex", f"HTTP {status}"
+        results = json.loads(body).get("results") or []
+        if results:
+            break
     if not results:
         return False, None, "openalex", "no title match found"
-    return True, (results[0].get("title") or ""), "openalex", ""
+    return True, [{"title": work.get("title") or "",
+                   "authors": [(a.get("author") or {}).get("display_name") or ""
+                               for a in work.get("authorships") or []],
+                   "year": work.get("publication_year")}
+                  for work in results], "openalex", ""
 
 
 # --------------------------------------------------------------------------
@@ -239,11 +315,13 @@ def check_entry(entry: dict) -> dict:
     eprint = fields.get("eprint") or fields.get("arxivid")
     try:
         if doi:
-            found, db_title, source, note = lookup_doi(clean_doi(doi))
+            found, records, source, note = lookup_doi(clean_doi(doi))
         elif eprint:
-            found, db_title, source, note = lookup_arxiv(eprint)
+            found, records, source, note = lookup_arxiv(eprint)
         else:
-            found, db_title, source, note = lookup_title(title)
+            authors = bib_family_names(fields.get("author", ""))
+            found, records, source, note = lookup_title(
+                title, authors[0] if authors else "")
     except RuntimeError as exc:
         result.update(status="ERROR", detail=str(exc))
         return result
@@ -256,13 +334,24 @@ def check_entry(entry: dict) -> dict:
         result["detail"] = note
         return result
 
-    score = titles_match(title, db_title or "")
-    if score >= TITLE_MATCH_THRESHOLD:
-        result.update(status="OK", detail=f"title match {score:.2f}")
-    else:
-        result.update(status="MISMATCH",
-                      detail=f'record exists but its title is "{db_title}" '
-                             f"(match {score:.2f})")
+    # The entry passes if any record agrees on title, authors and year.
+    # Otherwise report the first record whose title matched, if there is one.
+    failures = []
+    for db in records:
+        score = titles_match(title, db["title"])
+        if score < TITLE_MATCH_THRESHOLD:
+            failures.append((False, f'record exists but its title is "{db["title"]}" '
+                                    f"(match {score:.2f})"))
+            continue
+        problems = authors_and_year_problems(fields, db)
+        if not problems:
+            result.update(status="OK", detail=f"title match {score:.2f}, "
+                                              "authors and year agree")
+            return result
+        failures.append((True, f"title matches ({score:.2f}) but "
+                               + "; ".join(problems)))
+    failures.sort(key=lambda f: not f[0])
+    result.update(status="MISMATCH", detail=failures[0][1])
     return result
 
 
@@ -291,7 +380,7 @@ def save_cache(cache: dict, use_cache: bool) -> None:
 def fingerprint(entry: dict) -> str:
     f = entry["fields"]
     return "|".join([entry["key"], f.get("title", ""), f.get("doi", ""),
-                     f.get("eprint", "")])
+                     f.get("eprint", ""), f.get("author", ""), f.get("year", "")])
 
 
 # --------------------------------------------------------------------------

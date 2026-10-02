@@ -66,7 +66,7 @@ check: tables figures check-refs-fresh scrub paper
 	@echo "  - read ai_use_log.md once more"
 
 test:
-	@echo "== check_refs on the test fixture (expect 2 verified, 2 bad, exit 1) =="
+	@echo "== check_refs on the test fixture (expect 2 verified, 3 bad, exit 1) =="
 	-$(PYTHON) tools/check_refs.py tools/tests/sample.bib --no-cache
 	@echo
 	@echo "== scrub on the dirty fixture (expect 7 blocking, exit 1) =="
