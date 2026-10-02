@@ -7,7 +7,7 @@ BIB       := $(PAPER_DIR)/refs.bib
 PYTHON    := python3
 
 .PHONY: help paper figures tables check check-refs check-refs-fresh scrub \
-        find-refs ledger clean distclean test
+        find-refs ledger pdfs check-extractions clean distclean test
 
 help:
 	@echo "Targets:"
@@ -19,6 +19,8 @@ help:
 	@echo "  make check        figures + tables + refs + scrub + paper (the gate)"
 	@echo "  make find-refs Q=<doi|arxiv id|title>   look up a real reference"
 	@echo "  make ledger       show claims that have no evidence file yet"
+	@echo "  make pdfs         download open-access PDFs for refs.bib into sources/"
+	@echo "  make check-extractions   every quote in notes/extractions/ is in its PDF"
 	@echo "  make test         run the tool self-tests"
 	@echo "  make clean        remove LaTeX build files"
 
@@ -56,6 +58,12 @@ find-refs:
 
 ledger:
 	@$(PYTHON) tools/check_ledger.py
+
+pdfs:
+	$(PYTHON) tools/fetch_pdfs.py $(BIB)
+
+check-extractions:
+	$(PYTHON) tools/check_extractions.py notes/extractions
 
 # The pre-submission gate. Any failure stops the chain.
 check: tables figures check-refs-fresh scrub paper
