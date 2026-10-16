@@ -26,6 +26,7 @@ Then:
 
 | Stage | What you do | What the agent does | What checks it |
 | --- | --- | --- | --- |
+| First draft (optional) | Pick the topic; answer ARC's co-pilot questions | `arc-draft` skill; `make arc-run` | `make arc-audit` |
 | Find sources | Approve candidates; put PDFs in `sources/` | `find-literature` skill; `make find-refs` | `make check-refs` |
 | Related work | Spot-check the claims against the PDFs | `related-work` skill | `make scrub` |
 | Experiments | Decide what to run | Writes and runs the code in `experiments/` | Seeds and commit hash in each result file |

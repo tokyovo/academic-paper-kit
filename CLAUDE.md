@@ -123,6 +123,7 @@ No dependencies: the tools use the Python standard library only.
     notes/extractions ──> paper/sections/*.tex ──> make check-evidence
     paper/**/*.tex ──> make scrub (every \cite key must be in refs.bib)
     notes/claim_ledger.md + notes/claims/*.md ──> make ledger
+    AutoResearchClaw run ──> tools/import_arc.py ──> arc/<name>/ ──> make arc-audit
 
 - The `paper-pipeline` skill runs these stages with parallel agents
   (`.claude/agents/`). Read `docs/agent-workflow.md` before changing it.
@@ -147,5 +148,9 @@ No dependencies: the tools use the Python standard library only.
   - CI runs check-refs, scrub, ledger and the self-tests.
     It does not build the PDF or check result files (the template's example
     result has no real commit, so check-results fails until you delete it).
+- `arc/` holds AutoResearchClaw drafts and is git-ignored. Nothing in it is
+  verified. Never copy a reference, number or figure from `arc/` into
+  `paper/`. The `arc-draft` skill and `docs/autoresearchclaw.md` give the
+  steps.
 - `AGENTS.md` and `GEMINI.md` are symlinks to this file.
   Keep it neutral to the agent.

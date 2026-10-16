@@ -42,3 +42,7 @@ venv/
 # Local research output
 reports/
 research_notes/
+
+# AutoResearchClaw runs and staged drafts, and its config (it can hold API keys)
+arc/
+config.arc.yaml

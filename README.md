@@ -32,10 +32,11 @@ memory. Every entry in `paper/refs.bib` must come from a real lookup, and
 ```
 CLAUDE.md               the rules the agent must follow (AGENTS.md and
                         GEMINI.md are symlinks to it)
-.claude/skills/         seven skills: paper-pipeline (the whole paper with
+.claude/skills/         eight skills: paper-pipeline (the whole paper with
                         parallel agents), find-literature, related-work,
                         draft-section, claim-audit, reviewer-response,
-                        pre-submission
+                        pre-submission, arc-draft (AutoResearchClaw as a
+                        draft engine)
 .claude/agents/         paper-reader, paper-writer, paper-auditor: the agents
                         paper-pipeline runs in parallel
 paper/                  main.tex, sections/, refs.bib, generated tables and figures
@@ -46,11 +47,13 @@ notes/                  claim_ledger.md and claims/ (claim -> evidence ->
                         section), extractions/ (quoted notes per PDF)
 tools/                  find_refs.py, check_refs.py, fetch_pdfs.py, scrub.py,
                         check_extractions.py, check_evidence.py,
-                        check_results.py, check_ledger.py
+                        check_results.py, check_ledger.py, import_arc.py
 docs/                   workflow.md (the loop), agent-workflow.md (the
                         parallel-agent design), venues.md (disclosure rules
                         per venue), tools.md (other open-source tools),
-                        field-review.md (the research notes behind the rules)
+                        field-review.md (the research notes behind the rules),
+                        autoresearchclaw.md (ARC drafts, checked by the kit),
+                        collaborators/ (notes on groups who use the kit)
 ai_use_log.md           what you disclose at submission
 Makefile                make check is the pre-submission gate
 ```
@@ -85,6 +88,8 @@ make check-results   # every result names a real commit, seed, data, environment
 make ledger          # claims with no evidence file
 make check           # the whole gate, before you submit
 make test            # prove the checkers work on deliberately bad fixtures
+make arc-run T="<topic>" NAME=x   # draft with AutoResearchClaw, co-pilot mode
+make arc-audit NAME=x             # check that draft's references and text
 ```
 
 `make test` runs two fixtures: a bib file with two real and two fabricated
@@ -128,6 +133,9 @@ supervised.
 
 - `docs/agent-workflow.md` — the same loop with parallel agents: who owns
   which file, what each check proves, and the lessons from a trial paper.
+
+- `docs/autoresearchclaw.md` — how to use AutoResearchClaw for a first draft
+  and pass it through the kit's checks.
 
 - `docs/venues.md` — what each publisher and conference requires.
 

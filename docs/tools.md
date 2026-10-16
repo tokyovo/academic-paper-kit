@@ -59,6 +59,7 @@ Treat these as idea and experiment generators, not as authors.
 | **AI Scientist-v2** (`SakanaAI/AI-Scientist-v2`) | Hypotheses, experiments by agentic tree search, figure feedback from a vision model, then writes the manuscript | First AI-generated paper to pass workshop peer review (ICLR 2025). Custom source-code license: check the repo terms. Lower success rate than v1; citation errors |
 | **Agent Laboratory** (`SamuelSchmidgall/AgentLaboratory`) | Literature review, experiments, report writing, with a human-in-the-loop co-pilot mode. AgentRxiv lets agents build on each other's output | MIT, about 5.9k stars. Designed to assist a human. ML-centric |
 | **Denario** (arXiv:2510.26887) | Multi-agent research assistant | One of only five fully AI-generated papers accepted at Agents4Science 2025. The authors note it ran on a laptop with a very limited dataset |
+| **AutoResearchClaw** (`aiming-lab/AutoResearchClaw`) | 23 stages from a topic to a LaTeX paper: literature, ideas, experiment code, runs, figures, text. Co-pilot mode puts a human at about 6 decision points | MIT. Wired into this kit as a draft engine: see `docs/autoresearchclaw.md` and the `arc-draft` skill. Only 27% of its claims traced to evidence in one test; it changes the topic |
 | **Jr. AI Scientist** (arXiv:2511.04583) | Extends a baseline paper autonomously and ships a risk report | Submitted to Agents4Science |
 
 ## Survey generators

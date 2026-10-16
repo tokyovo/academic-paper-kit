@@ -7,9 +7,13 @@ BIB       := $(PAPER_DIR)/refs.bib
 # A project venv (.venv) is used when it exists: experiments and figures
 # often need packages, such as matplotlib, that the system Python lacks.
 PYTHON    := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+# AutoResearchClaw is installed separately (see docs/autoresearchclaw.md).
+ARC        ?= researchclaw
+ARC_CONFIG ?= config.arc.yaml
 
 .PHONY: help paper figures tables check check-refs check-refs-fresh scrub \
-        find-refs ledger pdfs check-extractions check-results check-evidence clean distclean test
+        find-refs ledger pdfs check-extractions check-results check-evidence clean distclean test \
+        arc-run arc-import arc-audit
 
 help:
 	@echo "Targets:"
@@ -26,6 +30,9 @@ help:
 	@echo "  make check-results       every result file names its commit, seed and data"
 	@echo "  make check-evidence      every cited sentence has a quote that is in its PDF"
 	@echo "  make test         run the tool self-tests"
+	@echo "  make arc-run T=\"<topic>\" NAME=<name>   draft with AutoResearchClaw (co-pilot mode)"
+	@echo "  make arc-import RUN=<run dir>   stage an AutoResearchClaw run in arc/<name>/"
+	@echo "  make arc-audit NAME=<name>      check its references and text with the kit"
 	@echo "  make clean        remove LaTeX build files"
 
 # latexmk if available, otherwise plain pdflatex with a bibtex pass.
@@ -91,6 +98,26 @@ test:
 	-$(PYTHON) tools/scrub.py tools/tests/dirty --strict
 	@echo
 	@echo "Self-tests done. Both tools are expected to exit non-zero above."
+
+# AutoResearchClaw drafts. Its output is staged in arc/, never in paper/.
+# See docs/autoresearchclaw.md and the arc-draft skill.
+arc-run:
+	@test -n "$(T)" -a -n "$(NAME)" || (echo 'Usage: make arc-run T="<topic>" NAME=<name>'; exit 2)
+	$(ARC) run --config $(ARC_CONFIG) --topic "$(T)" --mode co-pilot --output arc/runs/$(NAME)
+	$(PYTHON) tools/import_arc.py arc/runs/$(NAME) --name $(NAME)
+
+arc-import:
+	@test -n "$(RUN)" || (echo 'Usage: make arc-import RUN=<run dir> [NAME=<name>]'; exit 2)
+	$(PYTHON) tools/import_arc.py "$(RUN)" $(if $(NAME),--name $(NAME))
+
+# Both checks run, then the target fails if either one failed.
+arc-audit:
+	@test -n "$(NAME)" || (echo 'Usage: make arc-audit NAME=<name>'; exit 2)
+	@status=0; \
+	$(PYTHON) tools/check_refs.py arc/$(NAME)/refs.bib --no-cache || status=1; \
+	echo; \
+	$(PYTHON) tools/scrub.py arc/$(NAME) --strict || status=1; \
+	exit $$status
 
 clean:
 	cd $(PAPER_DIR) && latexmk -C || true
